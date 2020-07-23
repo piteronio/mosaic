@@ -1,1 +1,0 @@
-Upon running the script, data regarding the master image are stored here.

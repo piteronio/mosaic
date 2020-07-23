@@ -1,1 +1,0 @@
-Upon running the script, a library of image tiles for the mosaic is constructed from the image files in the images folder.
