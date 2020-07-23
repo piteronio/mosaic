@@ -25,7 +25,7 @@ OUTPUT_FOLDER = Path("output/")
 
 
 
-class Mosaic:
+class Mosaic_project:
     """
     Class for mosaic projects.
 
@@ -54,8 +54,39 @@ class Mosaic:
         '''width getter'''
         return self.width
 
+    def set_height(self,height):
+        '''height setter'''
+        self.height=height
+        return None
+    def set_width(self,width):
+        '''height setter'''
+        self.width=width
+        return None
+
+    def continue_existing(self):
+        '''continue existing project'''
+        try:
+            library_log = open(LIBRARY_FOLDER / "libary_log.txt", "r")
+            values_list=library_log.readlines()
+            library_log.close()
+        except FileNotFoundError:
+            raise FileNotFoundError("No project found or existing is corrupted.")
+        else:
+            height=int(values_list[0])
+            width=int(values_list[1])
+            self.set_height(height)
+            self.set_width(width)
+        return None
+
     def build_library(self):
-        '''build library of tile images'''
+        '''build an image library by cropping and resizing each
+        image found in the images folder and its subfolders, in 
+        accordance with the specified height and width values.
+        
+        Save all the processed images in the library folder as well as
+        a file averages.csv containing average colour values of all
+        the processed images.
+        '''
         #check whether a library already exists
         if len(os.listdir(LIBRARY_FOLDER)) > 2:
             print("Would you like to rebuild the library (y/n)?")
@@ -112,10 +143,14 @@ class Mosaic:
         log_file.close()
         print("building image library completed")
         return None
+    
+    def master_processor(self, max_im):
+        pass
 
 def image_processor(image, height, width):
     '''Croppes and resizes image in accordance with specified height
     and width, whilst preventing stretching or shrinking.
+    --------
     Keyword arguments:
     image  -- array-like image to be processed
     height -- target height of output image
@@ -158,3 +193,27 @@ def images_files():
         for file in files:
             file_list.append(os.path.join(root, file))
     return file_list
+
+def optimal(nr_im, asp_tile, asp_mast):
+    '''Compute optimal number of rows and columns of image tiles in mosaic
+    with nr_im images and aspect ratios asp_tile and asp_mast for the
+    image tiles and master image respectively.
+    --------
+    Keyword arguments:
+    nr_im    --- number of image tiles in library
+    asp_tile --- aspect ratio of image tiles
+    asp_mast --- aspect ratio of master tiles
+    --------
+    returns tuple with optimal number of rows and columns.
+    '''
+    def deviation(nr_row, nr_col):
+        '''compute squared difference between aspect ratios of master image
+        and mosaic with number of rows and columns as specified.
+        '''
+        return ((nr_row / nr_col) * asp_tile - asp_mast)**2
+    #construct list of possible row and column numbers
+    options = [(nr_row, nr_im // nr_row) for nr_row in range(1,nr_im+1)]
+    #find option with minimal deviation.
+    option_best = min(options, key = deviation)
+    return option_best
+        
