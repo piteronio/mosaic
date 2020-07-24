@@ -44,8 +44,31 @@ class Mosaic_project:
         Prints the person's name and age.
     """
     def __init__(self, height=100, width=120):
+        #Test whether old project files already exist.
+        if len(os.listdir(LIBRARY_FOLDER)) > 2:
+            print("Would you like to:")
+            print("(1) continue the old project, or")
+            print("(2) start a new one and clear all old files?")
+            choice = "0"
+            while choice not in ["1", "2"]:
+                choice = input("Please answer with 1 or 2: ")
+            if choice == "1":
+                try:
+                    library_log = open(LIBRARY_FOLDER / "libary_log.txt", "r")
+                    values_list=library_log.readlines()
+                    library_log.close()
+                except:
+                    raise FileNotFoundError("Old project is corrupted, please start a new one.")
+                else:
+                    height = int(values_list[0])
+                    width = int(values_list[1])
+            if choice == "2":
+                clear_library()
+                clear_mas_data()
         self.height = height
         self.width = width
+
+            
 
     def get_height(self):
         '''height getter'''
@@ -61,21 +84,6 @@ class Mosaic_project:
     def set_width(self,width):
         '''height setter'''
         self.width=width
-        return None
-
-    def continue_existing(self):
-        '''continue existing project'''
-        try:
-            library_log = open(LIBRARY_FOLDER / "libary_log.txt", "r")
-            values_list=library_log.readlines()
-            library_log.close()
-        except FileNotFoundError:
-            raise FileNotFoundError("No project found or existing is corrupted.")
-        else:
-            height=int(values_list[0])
-            width=int(values_list[1])
-            self.set_height(height)
-            self.set_width(width)
         return None
 
     def build_library(self):
@@ -99,6 +107,7 @@ class Mosaic_project:
                 return None
             else:
                 clear_library()
+                clear_mas_data()
                 print("library cleared")
         #retrieve target height and width of image tiles
         height = self.get_height()
@@ -144,8 +153,49 @@ class Mosaic_project:
         print("building image library completed")
         return None
     
-    def master_processor(self, max_im):
-        pass
+    def master_processor(self, max_im=False):
+        '''process master image'''
+        #check whether a master image has already been processed.
+        if len(os.listdir(MAS_DATA_FOLDER)) > 1:
+            print("Would you like to reprocess a master image?")
+            choice = "0"
+            while choice not in ["y", "n"]:
+                choice = input("Please respond with y or n: ")
+            if choice == "n":
+                return None
+            else:
+                clear_mas_data()
+        files = os.listdir(MASTER_FOLDER)
+        try:
+            files.remove("master folder readme.md")
+        except ValueError:
+            pass
+        if len(files) == 0:
+            raise FileNotFoundError("No image found in master folder.")
+        elif len(files) == 1:
+            file = files[0]
+        else:
+            print("Several files found in master folder:")
+            for index in range(len(files)):
+                print("("+str(index+1)+") "+files[index])
+            choice = "0"
+            options = [str(k+1) for k in range(len(files))]
+            while choice not in options:
+                choice = input("Which image would you like to use (1 or 2 or...)? ")
+            file = files[int(choice) - 1]
+        image = cv2.imread(file)
+        return image
+            
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
 
 def image_processor(image, height, width):
     '''Croppes and resizes image in accordance with specified height
@@ -172,16 +222,18 @@ def image_processor(image, height, width):
     return output
 
 def clear_library():
-    '''Clear library folder and mas_data subfolder.'''
-    #Firstly, we clear all files in the library folder.
+    '''Clear library folder.'''
     files = glob.glob("library/*")
     for file in files:
         if file not in [str(LIBRARY_FOLDER / "library_readme.md"),
                         str(MAS_DATA_FOLDER)]:
             os.remove(file)
-    #Secondly, we clear all files in the mas_data subfolder.
-    sub_files = glob.glob("library/*/*")
-    for file in sub_files:
+    return None
+
+def clear_mas_data():
+    '''Clear mas_data subfolder of library.'''
+    files = glob.glob("library/*/*")
+    for file in files:
         if not file == str(MAS_DATA_FOLDER / "mas_data_readme.md"):
             os.remove(file)
     return None
