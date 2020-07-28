@@ -1,3 +1,50 @@
+#created by Pieter Roffelsen
+"""This module allows one to construct a mosaic of a given master image,
+using images from a given collection of images.
+
+To use the module, add images, or folders containing images,
+ to the "images folder" and add at least one image to the "master folder".
+Then either run the script or follow the following three steps
+(1) import the module,
+(2) create a MosaicProject object, e.g.
+    $ mosaic = MosaicProject()
+(3) call the make_mosaic method, i.e.
+    $ mosaic.make_mosaic()
+
+This results in the following:
+(a) The images in the "images folder" will be cropped and resized to
+    uniform size and stored in the "library folder".
+(b) The master image in the "master folder" is processed and a
+    optimal assignment of images of the library as tiles of the mosaic
+    is determined.
+(c) A mosaic is build and saved in the "output folder".
+
+Remarks:
+One can choose the dimensions of the tiles by specifying height and width
+when creating the MosaicProject object, i.e.
+$ mosaic = MosaicProject(height=100, width=120)
+Their default values are height=100 and width=120.
+
+Say there are 1000 images in the "images folder". One can choose to only
+use 500 or less of them in creating a mosaic by specifying max_im in step (3),
+i.e.
+$ mosaic.make_mosaic(max_im=500)
+
+One can do some additional tuning of the mosaic, by specifying tuning in step
+(3), for example
+$ mosaic.make_mosaic(tuning="tuning_1")
+produces a mosaic which has been slightly pointwise shifted towards the master image.
+Another option is
+$ mosaic.make_mosaic(tuning="tuning_2")
+which produces a more severly shifted mosaic.
+One can also customise the tuning. For details on this please have a look
+ at the docstring of the build_mosaic method of the MosaicProject class.
+
+For additional building of mosaics, one can simply call the build_mosaic method, e.g.
+$ mosaic.build_mosaic(tuning="tuning2")
+"""
+
+
 import os
 from pathlib import Path
 import glob
