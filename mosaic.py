@@ -333,6 +333,14 @@ class MosaicProject:
             cv2.imwrite(str(MAS_DATA_FOLDER / ("mas_res_"+str(index+1)+".jpg")), mas_res)
         return None
 
+    def make_mosaic(self, max_im=0, tuning=None):
+        '''Build mosaic and save it in output folder.'''
+        #build library
+        self.build_library()
+        #process master image
+        self.process_master(max_im=max_im)
+        #build mosaic
+        self.build_mosaic(tuning=tuning)
 
 
 
@@ -566,3 +574,12 @@ def mosaic_namer(weights):
             output += "_" + str(weight)
         output += ".jpg"
     return output
+
+if __name__ == "__main__":
+    mosaic = MosaicProject()
+    #build library
+    mosaic.build_library()
+    #process master image
+    mosaic.process_master(max_im=0)
+    #build mosaic
+    mosaic.build_mosaic(tuning=None)
