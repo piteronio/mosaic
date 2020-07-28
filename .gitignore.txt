@@ -5,6 +5,8 @@
 *.dib
 
 *.jpg
+!example_master.jpg
+!example_mosaic.jpg
 *.jpeg
 *.jpe
 *.jp2
