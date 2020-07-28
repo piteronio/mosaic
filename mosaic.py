@@ -66,7 +66,7 @@ class MosaicProject:
                 clear_library()
                 clear_mas_data()
         self.height = height
-        self.width = width    
+        self.width = width
 
     def get_height(self):
         '''height getter'''
@@ -136,7 +136,7 @@ class MosaicProject:
             #Crop and resize image.
             image = image_processor(image, height, width)
             #Save processed image into the library folder.
-            cv2.imwrite(str(LIBRARY_FOLDER / ("proc_im_" + str(image_counter) + ".jpg")), image)
+            cv2.imwrite(str(LIBRARY_FOLDER / ("lib_im_" + str(image_counter) + ".jpg")), image)
             #Compute the average colour values of the processed image.
             average_colours = image.mean(axis=1).mean(axis=0)
             average_colours_list.append(average_colours)
@@ -153,7 +153,7 @@ class MosaicProject:
         print("Building of image library completed.")
         return None
 
-    def master_processor(self, max_im=0):
+    def process_master(self, max_im=0):
         '''Process master image:
         -load master image from the master folder,
         -determine optimal number of rows and columns of tiles
@@ -207,7 +207,7 @@ class MosaicProject:
         #resize master image to shape of to be built mosaic
         mas_im_resized = image_resizer(mas_im, nr_row * height, nr_col * width)
         #save resized master image in mas_data subfolder of library
-        cv2.imwrite(str(MAS_DATA_FOLDER / "mas_res.jpg"), mas_im_resized)
+        cv2.imwrite(str(MAS_DATA_FOLDER / "mas_res_1.jpg"), mas_im_resized)
         #extract average colour values of sub_images of master_image
         mas_im_data = extract_data(mas_im_resized, nr_row, nr_col)
         del mas_im_resized
@@ -217,6 +217,124 @@ class MosaicProject:
         pd.DataFrame(assignment).to_csv(str(MAS_DATA_FOLDER / "assignment.csv"))
         print("Master image processing completed.")
         return None
+
+    def build_mosaic(self, tuning=None):
+        '''Build mosaic and save in output folder.
+        -------
+        There are four allowed input forms for tuning:
+        1) tuning=None, then no tuning is performed.
+        -
+        2) tuning=[w_0,w_1,...,w_n], where elements are integers
+        and their sum equals 100. Then mosaic is tuned, namely
+        the following weighted average is taken
+        mosaic = + w_0/100 * mosaic_basic
+                 + w_1/100 * unfiltered resized master image
+                 + w_2/100 * 1 time filtered master image
+                 |
+                 + w_n/100 * (n-1) times filtered master image,
+        where mosaic_basic is the untuned mosaic,
+        and the filtered master images are obtained by repeated filtering
+        with uniform kernel of shape the same as a tile.
+        -
+        3) tuning = "tuning_1", which yields same as tuning = [80,13,0,0,7] .
+        -
+        4) tuning = "tuning_2", which yields same as tuning = [70,15,0,0,15] .
+        '''
+        #load optimal assignment from file
+        assignment_df = pd.read_csv(str(MAS_DATA_FOLDER / "assignment.csv"), index_col=0)
+        assign = {}
+        for index in range(len(assignment_df)):
+            assign[index] = assignment_df.iloc[index][1]
+        #retrieve nr_row, nr_col from log
+        log = open(LIBRARY_FOLDER / "log.txt", "r")
+        nr_row, nr_col = map(int, log.readlines()[3: 5])
+        log.close()
+        #retrieve height and width
+        height = self.get_height()
+        width = self.get_width()
+        #if tuning is None, average will not involve any filtered master image.
+        if tuning is None:
+            weights = [100]
+        #set pre-defined weights
+        elif tuning == "tuning_1":
+            weights = [80, 13, 0, 0, 7]
+        elif tuning == "tuning_2":
+            weights = [70, 15, 0, 0, 15]
+        else:
+            #check whether parameter tuning is a list of weights
+            if weights_check(tuning):
+                weights = tuning
+            #if not, raise ValueError
+            else:
+                raise ValueError("Parameter tuning does not have correct form.")
+        #compute support of weights
+        support = [k for k, weight in enumerate(weights) if weight]
+        #Construct missing filtered versions of master image necessary
+        #for building mosaic, if any are missing.
+        self._filter_master(max(support))
+        #load all relevant filtered versions of master image in dictionary
+        mas_res = {}
+        for index in support[1 : ]:
+            mas_res[index] = cv2.imread(str(MAS_DATA_FOLDER / ("mas_res_"+str(index)+".jpg")))
+        #initiate mosaic
+        print("Building of mosaic initiated.")
+        mosaic = np.zeros((nr_row * height, nr_col * width, 3), dtype=np.uint8)
+        #build mosaic tile by tile, looping over rows and columns
+        for row_ind in range(0, nr_row):
+            for col_ind in range(0, nr_col):
+                #load image in library used for tile
+                lib_im_nr = assign[row_ind * nr_col + col_ind]
+                image_loc = LIBRARY_FOLDER / ("lib_im_"+str(lib_im_nr)+".jpg")
+                lib_im = cv2.imread(str(image_loc))
+                #start computing weighted average
+                tile = weights[0] * np.array(lib_im, dtype=np.uint16)
+                #define limits of tile within mosaic
+                top_lim = row_ind * height
+                bot_lim = (row_ind + 1) * height
+                lef_lim = col_ind * width
+                rig_lim = (col_ind + 1) * width
+                #take weighted average with filtered versions of master image
+                for index in support[1 : ]:
+                    mas_res_part = mas_res[index][top_lim : bot_lim, lef_lim : rig_lim]
+                    tile += weights[index] * np.array(mas_res_part, dtype=np.uint16)
+                tile = tile // 100
+                #save tile to mosaic
+                mosaic[top_lim : bot_lim, lef_lim : rig_lim] = tile
+        print("Building of mosaic completed.")
+        #use mosaic_namer() to determine name of mosaic
+        mosaic_name = mosaic_namer(weights)
+        #save mosaic to file in output folder
+        cv2.imwrite(str(OUTPUT_FOLDER / mosaic_name), mosaic)
+        print("Mosaic has been written to output folder.")
+        return None
+
+    def _filter_master(self, level):
+        '''build filtered versions of resized master image through repeated
+        filtering with kernel the shape of a tile and save them in mas_data.
+        --------
+        Keyword arguments:
+        level -- number of repetitions of filtering
+        '''
+        #determine existing filtered versions of master image
+        existent = glob.glob("library/*/mas_res_*.jpg")
+        level_cur = len(existent)
+        #if current level is higher or equal to target level, nothing left to do.
+        if level <= level_cur:
+            return None
+        #load image with highest existing level of filtering
+        mas_res = cv2.imread(str(MAS_DATA_FOLDER / ("mas_res_"+str(level_cur)+".jpg")))
+        height = self.get_height()
+        width = self.get_width()
+        #define kernel with the shape of a tile
+        kernel = np.ones((height, width), np.float32) / (height * width)
+        #apply repeating filtering and save results in mas_data folder
+        for index in range(level_cur, level):
+            mas_res = cv2.filter2D(mas_res, -1, kernel)
+            cv2.imwrite(str(MAS_DATA_FOLDER / ("mas_res_"+str(index+1)+".jpg")), mas_res)
+        return None
+
+
+
 
 def clear_library():
     '''Clear library folder.'''
@@ -295,8 +413,8 @@ def load_mas_im():
     #if there are several files left, ask user to choose file
     else:
         print("Several files found in master folder:")
-        for index in range(len(files)):
-            print("("+str(index+1)+") "+files[index])
+        for index, file in enumerate(files):
+            print("("+str(index+1)+") "+file)
         choice = "0"
         options = [str(k+1) for k in range(len(files))]
         while choice not in options:
@@ -429,3 +547,22 @@ def optimal_assignment(mas_im_data):
     print("Total assignment cost: ", cost)
     assignment = [[k, col_ind[k]] for k in range(nr_mas_entries)]
     return assignment
+
+def weights_check(weights):
+    '''Check whether list or tuple consists only of integers
+    with sum equal to 100 and first entry is nonzero.
+    '''
+    if not all(isinstance(n, int) for n in weights):
+        return False
+    return sum(weights) == 100 and weights[0]
+
+def mosaic_namer(weights):
+    '''Return name which uniquely encodes weights used for building mosaic.'''
+    if weights[0] == 100:
+        output = "mosaic.jpg"
+    else:
+        output = "mosaic"
+        for weight in weights:
+            output += "_" + str(weight)
+        output += ".jpg"
+    return output
