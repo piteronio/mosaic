@@ -5,11 +5,12 @@ using images from a given collection of images.
 To use the module, add images, or folders containing images,
  to the "images folder" and add at least one image to the "master folder".
 Then either run the script or follow the following three steps
-(1) import the module,
+(1) import the module, e.g.
+    $ import mosaic
 (2) create a MosaicProject object, e.g.
-    $ mosaic = MosaicProject()
+    $ mos = mosaic.MosaicProject()
 (3) call the make_mosaic method, i.e.
-    $ mosaic.make_mosaic()
+    $ mos.make_mosaic()
 
 This results in the following:
 (a) The images in the "images folder" will be cropped and resized to
@@ -19,29 +20,33 @@ This results in the following:
     is determined.
 (c) A mosaic is build and saved in the "output folder".
 
+Suppose you have used the program before to make a mosaic project, then you will
+be prompted after step (2) to continue the old one or start a new one 
+and clear the old.
+
 Remarks:
-One can choose the dimensions of the tiles by specifying height and width
-when creating the MosaicProject object, i.e.
-$ mosaic = MosaicProject(height=100, width=120)
+One can choose the dimensions of the tiles in (a) by specifying height and width
+when creating the Mosaic object, i.e.
+$ mos = mosaic.MosaicProject(height=100, width=120)
 Their default values are height=100 and width=120.
 
 Say there are 1000 images in the "images folder". One can choose to only
 use 500 or less of them in creating a mosaic by specifying max_im in step (3),
 i.e.
-$ mosaic.make_mosaic(max_im=500)
+$ mos.make_mosaic(max_im=500)
 
-One can do some additional tuning of the mosaic, by specifying tuning in step
+One can do some additional tuning of the mosaic in part (c), by specifying tuning in step
 (3), for example
-$ mosaic.make_mosaic(tuning="tuning_1")
+$ mos.make_mosaic(tuning="tuning_1")
 produces a mosaic which has been slightly pointwise shifted towards the master image.
 Another option is
-$ mosaic.make_mosaic(tuning="tuning_2")
+$ mos.make_mosaic(tuning="tuning_2")
 which produces a more severly shifted mosaic.
 One can also customise the tuning. For details on this please have a look
  at the docstring of the build_mosaic method of the MosaicProject class.
 
 For additional building of mosaics, one can simply call the build_mosaic method, e.g.
-$ mosaic.build_mosaic(tuning="tuning2")
+$ mos.build_mosaic(tuning="tuning2")
 """
 
 
@@ -110,8 +115,8 @@ class MosaicProject:
                     height = int(values_list[0])
                     width = int(values_list[1])
             if choice == "2":
-                clear_library()
-                clear_mas_data()
+                _clear_library()
+                _clear_mas_data()
         self.height = height
         self.width = width
 
@@ -153,14 +158,14 @@ class MosaicProject:
             if choice == "n":
                 return None
             else:
-                clear_library()
-                clear_mas_data()
+                _clear_library()
+                _clear_mas_data()
                 print("library cleared")
         #retrieve target height and width of image tiles
         height = self.get_height()
         width = self.get_width()
         #create list of all files in images folder and its subfolders
-        file_list = images_files()
+        file_list = _images_files()
         total_files = len(file_list)    #total number of files
         image_counter = 0               #tracks number of images among files
         percent = 0                     #tracks completion percentage
@@ -181,7 +186,7 @@ class MosaicProject:
             if image is None:   #If not, then skip to the next iteration.
                 continue
             #Crop and resize image.
-            image = image_processor(image, height, width)
+            image = _image_processor(image, height, width)
             #Save processed image into the library folder.
             cv2.imwrite(str(LIBRARY_FOLDER / ("lib_im_" + str(image_counter) + ".jpg")), image)
             #Compute the average colour values of the processed image.
@@ -221,9 +226,9 @@ class MosaicProject:
             if choice == "n":
                 return None
             else:
-                clear_mas_data()
+                _clear_mas_data()
         #load master image
-        mas_im = load_mas_im()
+        mas_im = _load_mas_im()
         print("Master image processing initiated.")
         #get aspect ratio of master image
         mas_dim = mas_im.shape
@@ -242,7 +247,7 @@ class MosaicProject:
         else:
             nr_im = nr_lib
         #find optimal numbers of rows and columns in mosaic
-        (nr_row, nr_col) = optimal(nr_im, asp_tile, asp_mast)
+        (nr_row, nr_col) = _optimal(nr_im, asp_tile, asp_mast)
         print("Your mosaic will consist of "+str(nr_row)+\
               " rows and "+str(nr_col)+" columns of images.")
         #save optimal numbers of rows and columns in log file
@@ -252,14 +257,14 @@ class MosaicProject:
                         str(nr_col) + "\n"])
         log.close()
         #resize master image to shape of to be built mosaic
-        mas_im_resized = image_resizer(mas_im, nr_row * height, nr_col * width)
+        mas_im_resized = _image_resizer(mas_im, nr_row * height, nr_col * width)
         #save resized master image in mas_data subfolder of library
         cv2.imwrite(str(MAS_DATA_FOLDER / "mas_res_1.jpg"), mas_im_resized)
         #extract average colour values of sub_images of master_image
-        mas_im_data = extract_data(mas_im_resized, nr_row, nr_col)
+        mas_im_data = _extract_data(mas_im_resized, nr_row, nr_col)
         del mas_im_resized
         #compute optimal assignment of library images to mosaic tiles
-        assignment = optimal_assignment(mas_im_data)
+        assignment = _optimal_assignment(mas_im_data)
         #save optimal assignment as csv file in mas data subfolder
         pd.DataFrame(assignment).to_csv(str(MAS_DATA_FOLDER / "assignment.csv"))
         print("Master image processing completed.")
@@ -309,7 +314,7 @@ class MosaicProject:
             weights = [70, 15, 0, 0, 15]
         else:
             #check whether parameter tuning is a list of weights
-            if weights_check(tuning):
+            if _weights_check(tuning):
                 weights = tuning
             #if not, raise ValueError
             else:
@@ -349,7 +354,7 @@ class MosaicProject:
                 mosaic[top_lim : bot_lim, lef_lim : rig_lim] = tile
         print("Building of mosaic completed.")
         #use mosaic_namer() to determine name of mosaic
-        mosaic_name = mosaic_namer(weights)
+        mosaic_name = _mosaic_namer(weights)
         #save mosaic to file in output folder
         cv2.imwrite(str(OUTPUT_FOLDER / mosaic_name), mosaic)
         print("Mosaic has been written to output folder.")
@@ -391,7 +396,7 @@ class MosaicProject:
 
 
 
-def clear_library():
+def _clear_library():
     '''Clear library folder.'''
     files = glob.glob("library/*")
     for file in files:
@@ -400,7 +405,7 @@ def clear_library():
             os.remove(file)
     return None
 
-def clear_mas_data():
+def _clear_mas_data():
     '''Clear mas_data subfolder of library.'''
     files = glob.glob("library/*/*")
     for file in files:
@@ -408,7 +413,7 @@ def clear_mas_data():
             os.remove(file)
     return None
 
-def images_files():
+def _images_files():
     '''Return list of all file-paths in images folder.'''
     file_list = []
     for root, _, files in os.walk(IMAGES_FOLDER):
@@ -416,7 +421,7 @@ def images_files():
             file_list.append(os.path.join(root, file))
     return file_list
 
-def image_processor(image, height, width):
+def _image_processor(image, height, width):
     '''Croppes and resizes image in accordance with specified height
     and width, whilst preventing stretching or shrinking.
     --------
@@ -442,7 +447,7 @@ def image_processor(image, height, width):
 
 
 
-def load_mas_im():
+def _load_mas_im():
     '''Load master image from master folder and return it.
     ---------
     If there are several files in master folder, ask user to choose one.
@@ -484,7 +489,7 @@ def load_mas_im():
 
 
 
-def optimal(nr_im, asp_tile, asp_mast):
+def _optimal(nr_im, asp_tile, asp_mast):
     '''Compute optimal number of rows and columns of image tiles in mosaic
     with nr_im images and aspect ratios asp_tile and asp_mast for the
     image tiles and master image respectively.
@@ -508,7 +513,7 @@ def optimal(nr_im, asp_tile, asp_mast):
     option_best = min(options, key=deviation)
     return option_best
 
-def image_resizer(image, target_height, target_width):
+def _image_resizer(image, target_height, target_width):
     '''Resizes image to specified height and width.
     --------
     Keyword arguments:
@@ -529,7 +534,7 @@ def image_resizer(image, target_height, target_width):
     output = cv2.filter2D(output, -1, kernel)
     return output
 
-def extract_data(image, nr_row, nr_col):
+def _extract_data(image, nr_row, nr_col):
     '''Partition image into nr_row rows and nr_col columns of tiles and return
     list with average colour values of each part, where
     output[row_index * nr_col + col_index] = average in tile in
@@ -562,7 +567,7 @@ def extract_data(image, nr_row, nr_col):
             output.append(sub_im_average)
     return output
 
-def optimal_assignment(mas_im_data):
+def _optimal_assignment(mas_im_data):
     '''Given data of master image, return optimal assignment of library
     images to tiles in mosaic.
     '''
@@ -603,7 +608,7 @@ def optimal_assignment(mas_im_data):
     assignment = [[k, col_ind[k]] for k in range(nr_mas_entries)]
     return assignment
 
-def weights_check(weights):
+def _weights_check(weights):
     '''Check whether list or tuple consists only of integers
     with sum equal to 100 and first entry is nonzero.
     '''
@@ -611,7 +616,7 @@ def weights_check(weights):
         return False
     return sum(weights) == 100 and weights[0]
 
-def mosaic_namer(weights):
+def _mosaic_namer(weights):
     '''Return name which uniquely encodes weights used for building mosaic.'''
     if weights[0] == 100:
         output = "mosaic.jpg"
@@ -623,10 +628,10 @@ def mosaic_namer(weights):
     return output
 
 if __name__ == "__main__":
-    mosaic = MosaicProject()
+    Mos = MosaicProject()
     #build library
-    mosaic.build_library()
+    Mos.build_library()
     #process master image
-    mosaic.process_master(max_im=0)
+    Mos.process_master(max_im=0)
     #build mosaic
-    mosaic.build_mosaic(tuning=None)
+    Mos.build_mosaic(tuning=None)
