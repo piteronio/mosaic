@@ -1,1 +1,2 @@
-Upon running the script, data regarding the master image are stored here.
+# mas_data folder
+This folder is for internal use only. Master image data is stored here.

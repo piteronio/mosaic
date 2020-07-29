@@ -1,1 +1,2 @@
-Upon running the script, a library of image tiles for the mosaic is constructed from the image files in the images folder.
+# library folder
+This folder is only for internal use. It is where processed images are stored for the image library.

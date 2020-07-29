@@ -1,1 +1,4 @@
-This folder is for the master image. Please add the image you would like the mosaic to approximate here.
+# master folder
+This folder is for master images. Please add the master image for the mosaic here.
+
+You can also add several.

@@ -1,1 +1,0 @@
-Upon running the script, the mosaic is printed here.

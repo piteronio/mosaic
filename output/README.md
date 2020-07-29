@@ -1,1 +1,2 @@
-Upon running the script, the mosaic is printed here.
+# output folder
+Mosaics are printed in this folder.

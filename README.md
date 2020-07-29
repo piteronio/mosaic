@@ -21,12 +21,12 @@ which builds a mosaic and saves it in the "output folder".
 Here max_im and tuning are optional parameters.
 
 ### max_im
-Suppose there are 1300 images in the "image folder". You might want to make a mosaic using merely a 1000 of them. Then use
+Suppose there are 1300 images in the "image folder". You might want to make a mosaic using merely a 1000 of them. Then set max_im=1000, i.e.
 ```
 mos.make_mosaic(max_im=1000, tuning=None)
 ```
 ### tuning
-Tuning basically means colour shifting the mosaic towards to the master image.
+Tuning basically means colour shifting the mosaic towards the master image.
 The options are tuning="tuning_1", tuning="tuning_2" or custom tuning. For example,
 ```
 mos.make_mosaic(max_im=0, tuning="tuning_1")
