@@ -6,47 +6,75 @@ To use the module, add images, or folders containing images,
  to the "images folder" and add at least one image to the "master folder".
 Then either run the script or follow the following three steps
 (1) import the module, e.g.
-    $ import mosaic
+    >>> import mosaic
 (2) create a MosaicProject object, e.g.
-    $ mos = mosaic.MosaicProject()
+    >>> mos = mosaic.MosaicProject(height=100, width=120)
+    Height and width are optional and determine tile size in mosaic.
+    Their default values are height=100 and width=120.
 (3) call the make_mosaic method, i.e.
-    $ mos.make_mosaic()
+    >>> mos.make_mosaic(max_im=0, tuning=None)
+    max_im and tuning are optional, more on them below.
 
 This results in the following:
 (a) The images in the "images folder" will be cropped and resized to
-    uniform size and stored in the "library folder".
+    shape (height, width) and stored in the "library folder".
 (b) The master image in the "master folder" is processed and a
     optimal assignment of images of the library as tiles of the mosaic
     is determined.
-(c) A mosaic is build and saved in the "output folder".
+(c) A mosaic is built and printed in the "output folder".
 
 Suppose you have used the program before to make a mosaic project, then you will
 be prompted after step (2) to continue the old one or start a new one 
-and clear the old.
+and clear the old. Upon continuing the old one, when running
+>>> mos.make_mosaic(max_im=0, tuning=None)
+you will be prompted whether you want to rebuild the library and whether you want
+to process another master image.
 
-Remarks:
-One can choose the dimensions of the tiles in (a) by specifying height and width
-when creating the Mosaic object, i.e.
-$ mos = mosaic.MosaicProject(height=100, width=120)
-Their default values are height=100 and width=120.
+******
 
-Say there are 1000 images in the "images folder". One can choose to only
+ABOUT MAX_IM
+Say there are a 1000 images in the "images folder". One can choose to only
 use 500 or less of them in creating a mosaic by specifying max_im in step (3),
 i.e.
-$ mos.make_mosaic(max_im=500)
+>>> mos.make_mosaic(max_im=500)
+The default value of max_im = 0 which means no maximum is specified.
 
+ABOUT TUNING
 One can do some additional tuning of the mosaic in part (c), by specifying tuning in step
 (3), for example
-$ mos.make_mosaic(tuning="tuning_1")
+>>> mos.make_mosaic(tuning="tuning_1")
 produces a mosaic which has been slightly pointwise shifted towards the master image.
 Another option is
-$ mos.make_mosaic(tuning="tuning_2")
+>>> mos.make_mosaic(tuning="tuning_2")
 which produces a more severly shifted mosaic.
 One can also customise the tuning. For details on this please have a look
- at the docstring of the build_mosaic method of the MosaicProject class.
+ at the docstring of the print_mosaic method of the MosaicProject class.
 
-For additional building of mosaics, one can simply call the build_mosaic method, e.g.
-$ mos.build_mosaic(tuning="tuning2")
+ABOUT ADDITIONAL PRINTING
+For additional printing of mosaics, one can simply call the print_mosaic method, e.g.
+>>> mos.print_mosaic(tuning="tuning2")
+
+MANUAL BUILDING OF MOSAIC
+One can also do steps (a), (b) and (c) manually. For example:
+Create a MosaicProject,
+>>> mos = mosaic.MosaicProject(height=100, width=120)
+Build a library
+>>> mos.build_library()
+Process a master image
+>>> mos.process_master(max_im=0)
+Print a mosaic
+>>> mos.print_mosaic(tuning=None)
+
+Say that you for example want to change the master image, then just
+add a different master image to the "master folder" and 
+process the new master image
+>>> mos.process_master(max_im=0)
+Print a new mosaic
+>>> mos.print_mosaic(tuning=None)
+
+SEVERAL IMAGES IN MASTER FOLDER
+If there are several images in the "master folder", the user will be prompted
+to choose in step (3) or when processing a master image manually.
 """
 
 
@@ -270,7 +298,7 @@ class MosaicProject:
         print("Master image processing completed.")
         return None
 
-    def build_mosaic(self, tuning=None):
+    def print_mosaic(self, tuning=None):
         '''Build mosaic and save in output folder.
         -------
         There are four allowed input forms for tuning:
@@ -392,7 +420,7 @@ class MosaicProject:
         #process master image
         self.process_master(max_im=max_im)
         #build mosaic
-        self.build_mosaic(tuning=tuning)
+        self.print_mosaic(tuning=tuning)
 
 
 
@@ -634,4 +662,4 @@ if __name__ == "__main__":
     #process master image
     Mos.process_master(max_im=0)
     #build mosaic
-    Mos.build_mosaic(tuning=None)
+    Mos.print_mosaic(tuning=None)

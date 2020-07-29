@@ -32,7 +32,7 @@ The options are tuning="tuning_1", tuning="tuning_2" or custom tuning. For examp
 mos.make_mosaic(max_im=0, tuning="tuning_1")
 ```
 yields a slight shift towards the master image, and tuning="tuning_2" yields a more severe shift.
-For custom tuning, please have a look at TUNING_README.MD.
+For custom tuning, please have a look at the section "custom tuning" below.
 
 ## example
 I placed 1210 Australian wildlife images in the "images folder" and the following image in the master folder.
@@ -90,4 +90,25 @@ mos = mosaic.MosaicProject()
 The user is then prompted to either continue the old project or start a new one and clear the old one.
 Select continue old project.
 
+## custom tuning
+Customised tuning is for example done as follows:
+```
+weights=[60,10,0,25,5]
+mos.print_mosaic(tuning=weights)
+```
+This prints a mosaic which is a composition of (technically a weighted average of)  
+-60% the basic (untuned) mosaic,  
+-10% the master image,  
+-0%  a once smoothened version of the master image,  
+-25% a twice smoothened version of the master mosaic,  
+-5%  a triply smoothened version of the master mosaic.
 
+The weights must be a tuple or list containing only integers with sum equal to 100.
+
+The preset tuning options translate as follows:  
+tuning = None       is equivalent to tuning = [100],  
+tuning = "tuning_1" is equivalent to tuning = [80, 13, 0, 0, 7],  
+tuning = "tuning_2" is equivalent to tuning = [70, 15, 0, 0, 15].
+
+The idea behind using smoothened versions in tuning is that they distort individual tiles less than using the original master image.
+In this way a severe tradeoff between global accuracy of mosaic and local intactness of tiles is avoided.
