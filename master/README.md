@@ -1,0 +1,1 @@
+This folder is for the master image. Please add the image you would like the mosaic to approximate here.
