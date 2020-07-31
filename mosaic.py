@@ -1,80 +1,6 @@
 #created by Pieter Roffelsen
-"""This module allows one to construct a mosaic of a given master image,
-using images from a given collection of images.
-
-To use the module, add images, or folders containing images,
- to the "images folder" and add at least one image to the "master folder".
-Then either run the script or follow the following three steps
-(1) import the module, e.g.
-    >>> import mosaic
-(2) create a MosaicProject object, e.g.
-    >>> mos = mosaic.MosaicProject(height=100, width=120)
-    Height and width are optional and determine tile size in mosaic.
-    Their default values are height=100 and width=120.
-(3) call the make_mosaic method, i.e.
-    >>> mos.make_mosaic(max_im=0, tuning=None)
-    max_im and tuning are optional, more on them below.
-
-This results in the following:
-(a) The images in the "images folder" will be cropped and resized to
-    shape (height, width) and stored in the "library folder".
-(b) The master image in the "master folder" is processed and a
-    optimal assignment of images of the library as tiles of the mosaic
-    is determined.
-(c) A mosaic is built and printed in the "output folder".
-
-Suppose you have used the program before to make a mosaic project, then you will
-be prompted after step (2) to continue the old one or start a new one 
-and clear the old. Upon continuing the old one, when running
->>> mos.make_mosaic(max_im=0, tuning=None)
-you will be prompted whether you want to rebuild the library and whether you want
-to process another master image.
-
-******
-
-ABOUT MAX_IM
-Say there are a 1000 images in the "images folder". One can choose to only
-use 500 or less of them in creating a mosaic by specifying max_im in step (3),
-i.e.
->>> mos.make_mosaic(max_im=500)
-The default value of max_im = 0 which means no maximum is specified.
-
-ABOUT TUNING
-One can do some additional tuning of the mosaic in part (c), by specifying tuning in step
-(3), for example
->>> mos.make_mosaic(tuning="tuning_1")
-produces a mosaic which has been slightly pointwise shifted towards the master image.
-Another option is
->>> mos.make_mosaic(tuning="tuning_2")
-which produces a more severly shifted mosaic.
-One can also customise the tuning. For details on this please have a look
- at the docstring of the print_mosaic method of the MosaicProject class.
-
-ABOUT ADDITIONAL PRINTING
-For additional printing of mosaics, one can simply call the print_mosaic method, e.g.
->>> mos.print_mosaic(tuning="tuning2")
-
-MANUAL BUILDING OF MOSAIC
-One can also do steps (a), (b) and (c) manually. For example:
-Create a MosaicProject,
->>> mos = mosaic.MosaicProject(height=100, width=120)
-Build a library
->>> mos.build_library()
-Process a master image
->>> mos.process_master(max_im=0)
-Print a mosaic
->>> mos.print_mosaic(tuning=None)
-
-Say that you for example want to change the master image, then just
-add a different master image to the "master folder" and 
-process the new master image
->>> mos.process_master(max_im=0)
-Print a new mosaic
->>> mos.print_mosaic(tuning=None)
-
-SEVERAL IMAGES IN MASTER FOLDER
-If there are several images in the "master folder", the user will be prompted
-to choose in step (3) or when processing a master image manually.
+"""This module allows one to build a mosaic of a given master image,
+using images from a given collection of images. For details, please see the README.
 """
 
 
@@ -90,7 +16,6 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import linear_sum_assignment
 
-
 IMAGES_FOLDER = Path("images/")
 LIBRARY_FOLDER = Path("library/")
 MAS_DATA_FOLDER = Path("library/mas_data/")
@@ -98,17 +23,9 @@ MASTER_FOLDER = Path("master/")
 OUTPUT_FOLDER = Path("output/")
 
 
-
-
-
-
-
-
-
 class MosaicProject:
     """
     Class for mosaic projects.
-
     ...
 
     Attributes
@@ -120,8 +37,18 @@ class MosaicProject:
 
     Methods
     -------
-    info(additional=""):
-        Prints the person's name and age.
+    build_library(self)
+    Build library from images in image folder.
+    
+    process_master(self, max_im=0)
+    Find optimal assignment of library images to tiles in mosaic,
+    using no more than max_im images if max_im > 0.
+    
+    print_mosaic(self, tuning=None)
+    Print a mosaic with optional tuning
+    
+    build_mosaic(self, max_im=0, tuning=None)
+    Call build_library, process_master and print_mosaic.
     """
     def __init__(self, height=100, width=120):
         #Test whether old project files already exist.
@@ -316,9 +243,9 @@ class MosaicProject:
         and the filtered master images are obtained by repeated filtering
         with uniform kernel of shape the same as a tile.
         -
-        3) tuning = "tuning_1", which yields same as tuning = [80,13,0,0,7] .
+        3) tuning = "tuning_1", which yields same as tuning = [80, 13, 0, 0, 7] .
         -
-        4) tuning = "tuning_2", which yields same as tuning = [70,15,0,0,15] .
+        4) tuning = "tuning_2", which yields same as tuning = [70, 15, 0, 0, 15] .
         '''
         #load optimal assignment from file
         assignment_df = pd.read_csv(str(MAS_DATA_FOLDER / "assignment.csv"), index_col=0)
@@ -413,7 +340,7 @@ class MosaicProject:
             cv2.imwrite(str(MAS_DATA_FOLDER / ("mas_res_"+str(index+1)+".jpg")), mas_res)
         return None
 
-    def make_mosaic(self, max_im=0, tuning=None):
+    def build_mosaic(self, max_im=0, tuning=None):
         '''Build mosaic and save it in output folder.'''
         #build library
         self.build_library()
@@ -422,8 +349,7 @@ class MosaicProject:
         #build mosaic
         self.print_mosaic(tuning=tuning)
 
-
-
+#BUILD_LIBRARY HELPER FUNCTIONS
 def _clear_library():
     '''Clear library folder.'''
     files = glob.glob("library/*")
@@ -473,8 +399,7 @@ def _image_processor(image, height, width):
     output = cv2.resize(cropped_im, (width, height), interpolation=cv2.INTER_AREA)
     return output
 
-
-
+#PROCESS_MASTER HELPER FUNCTIONS
 def _load_mas_im():
     '''Load master image from master folder and return it.
     ---------
@@ -514,8 +439,6 @@ def _load_mas_im():
         if mas_im is None:
             raise TypeError("Chosen file isn't recognised as an image.")
     return mas_im
-
-
 
 def _optimal(nr_im, asp_tile, asp_mast):
     '''Compute optimal number of rows and columns of image tiles in mosaic
@@ -636,6 +559,7 @@ def _optimal_assignment(mas_im_data):
     assignment = [[k, col_ind[k]] for k in range(nr_mas_entries)]
     return assignment
 
+#PRINT_MOSAIC HELPER FUNCTIONS
 def _weights_check(weights):
     '''Check whether list or tuple consists only of integers
     with sum equal to 100 and first entry is nonzero.
@@ -655,6 +579,7 @@ def _mosaic_namer(weights):
         output += ".jpg"
     return output
 
+#IF RUNNING SCRIPT
 if __name__ == "__main__":
     Mos = MosaicProject()
     #build library
