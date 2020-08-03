@@ -7,6 +7,7 @@ using images from a given collection of images. For details, please see the READ
 import os
 from pathlib import Path
 import glob
+import json
 
 import math
 
@@ -23,6 +24,51 @@ MASTER_FOLDER = Path("master/")
 OUTPUT_FOLDER = Path("output/")
 
 
+
+class _Parameters:
+    """
+    Class for parameters of mosaic projects.
+    ...
+
+    Attributes
+    ----------
+    dic : dictionary with keys (parameters):
+        "height" - height of tiles in mosaic
+        "width"  - width of tiles in mosaic
+        "nr_im"  - number of images in library
+        "nr_row" - number of rows of images in mosaic
+        "nr_col" - number of columns of images in mosaic
+    """
+    def __init__(self, height="", width=""):
+        self.dic = {"height" : height, "width" : width,
+                    "nr_im" : "", "nr_row" : "",
+                    "nr_col" : ""}
+
+    def get(self, parameter):
+        '''Get value of parameter.'''
+        return self.dic[parameter]
+
+    def set(self, parameter, value):
+        '''Set value of parameter.'''
+        self.dic[parameter] = value
+        return None
+
+    def save(self):
+        '''Save parameters to file in library folder.'''
+        log = open(LIBRARY_FOLDER / "log.txt", "w")
+        json_dump = json.dumps(self.dic)
+        log.write(json_dump)
+        log.close()
+        return None
+
+    def load(self):
+        '''Load parameters from file.'''
+        json_file = open(LIBRARY_FOLDER / "log.txt", "r")
+        dic = json.load(json_file)
+        self.dic = dic
+        return None
+
+
 class MosaicProject:
     """
     Class for mosaic projects.
@@ -30,27 +76,27 @@ class MosaicProject:
 
     Attributes
     ----------
-    height : integer
-        target height of tiles in mosaic
-    width : integer
-        target width of tiles in mosaic
+    parameters : instance of the _Parameter class.
+    Contains values of relevant parameters of a mosaic project.
 
     Methods
     -------
     build_library(self)
     Build library from images in image folder.
-    
+
     process_master(self, max_im=0)
     Find optimal assignment of library images to tiles in mosaic,
     using no more than max_im images if max_im > 0.
-    
+
     print_mosaic(self, tuning=None)
     Print a mosaic with optional tuning
-    
+
     build_mosaic(self, max_im=0, tuning=None)
     Call build_library, process_master and print_mosaic.
     """
     def __init__(self, height=100, width=120):
+        #initialise parameters of mosaic.
+        self.parameters = _Parameters(height=height, width=width)
         #Test whether old project files already exist.
         if len(os.listdir(LIBRARY_FOLDER)) > 2:
             print("Would you like to:")
@@ -61,37 +107,16 @@ class MosaicProject:
                 choice = input("Please answer with 1 or 2: ")
             if choice == "1":
                 try:
-                    library_log = open(LIBRARY_FOLDER / "log.txt", "r")
-                    values_list = library_log.readlines()
-                    library_log.close()
+                    self.parameters.load()
                 except:
                     raise FileNotFoundError("Old project is corrupted, please start a new one.")
-                else:
-                    height = int(values_list[0])
-                    width = int(values_list[1])
             if choice == "2":
                 _clear_library()
                 _clear_mas_data()
-        self.height = height
-        self.width = width
 
-    def get_height(self):
-        '''height getter'''
-        return self.height
-
-    def get_width(self):
-        '''width getter'''
-        return self.width
-
-    def set_height(self, height):
-        '''height setter'''
-        self.height = height
-        return None
-
-    def set_width(self, width):
-        '''height setter'''
-        self.width = width
-        return None
+    def get_parameters(self):
+        '''parameters getter'''
+        return self.parameters
 
     def build_library(self):
         '''build an image library by cropping and resizing each
@@ -116,9 +141,8 @@ class MosaicProject:
                 _clear_library()
                 _clear_mas_data()
                 print("library cleared")
-        #retrieve target height and width of image tiles
-        height = self.get_height()
-        width = self.get_width()
+        #retrieve mosaic parameters
+        param = self.get_parameters()
         #create list of all files in images folder and its subfolders
         file_list = _images_files()
         total_files = len(file_list)    #total number of files
@@ -141,7 +165,7 @@ class MosaicProject:
             if image is None:   #If not, then skip to the next iteration.
                 continue
             #Crop and resize image.
-            image = _image_processor(image, height, width)
+            image = _image_processor(image, param.get("height"), param.get("width"))
             #Save processed image into the library folder.
             cv2.imwrite(str(LIBRARY_FOLDER / ("lib_im_" + str(image_counter) + ".jpg")), image)
             #Compute the average colour values of the processed image.
@@ -152,11 +176,10 @@ class MosaicProject:
         #as averages.csv in the library folder.
         average_colours_list = pd.DataFrame(average_colours_list)
         average_colours_list.to_csv(str(LIBRARY_FOLDER / "averages.csv"))
-        #Create a log in the library folder with the height, width
-        #and number of images in the library.
-        log = open(LIBRARY_FOLDER / "log.txt", "w")
-        log.writelines([str(height) + "\n", str(width) + "\n", str(image_counter) + "\n"])
-        log.close()
+        #Set parameter "nr_im" to image_counter.
+        param.set("nr_im", image_counter)
+        #Save parameters on file.
+        param.save()
         print("Building of image library completed.")
         return None
 
@@ -189,30 +212,24 @@ class MosaicProject:
         mas_dim = mas_im.shape
         asp_mast = mas_dim[0] / mas_dim[1]
         #get aspect ratio of tile images
-        height = self.get_height()
-        width = self.get_width()
-        asp_tile = height / width
-        #get number of images in library from log file
-        log = open(LIBRARY_FOLDER / "log.txt", "r")
-        nr_lib = int(log.readlines()[2])
-        log.close()
+        param = self.get_parameters()
+        asp_tile = param.get("height") / param.get("width")
         #set maximum number of image tiles in mosaic
         if max_im > 0:
-            nr_im = max(nr_lib, max_im)
+            nr_im_used = min(param.get("nr_im"), max_im)
         else:
-            nr_im = nr_lib
+            nr_im_used = param.get("nr_im")
         #find optimal numbers of rows and columns in mosaic
-        (nr_row, nr_col) = _optimal(nr_im, asp_tile, asp_mast)
+        (nr_row, nr_col) = _optimal(nr_im_used, asp_tile, asp_mast)
         print("Your mosaic will consist of "+str(nr_row)+\
               " rows and "+str(nr_col)+" columns of images.")
-        #save optimal numbers of rows and columns in log file
-        log = open(LIBRARY_FOLDER / "log.txt", "w")
-        log.writelines([str(height) + "\n", str(width) + "\n",
-                        str(nr_lib) + "\n", str(nr_row) + "\n",
-                        str(nr_col) + "\n"])
-        log.close()
+        #set numbers of rows and columns parameters
+        param.set("nr_row", nr_row)
+        param.set("nr_col", nr_col)
+        param.save()
         #resize master image to shape of to be built mosaic
-        mas_im_resized = _image_resizer(mas_im, nr_row * height, nr_col * width)
+        mas_im_resized = _image_resizer(mas_im, nr_row * param.get("height"),\
+                                        nr_col * param.get("width"))
         #save resized master image in mas_data subfolder of library
         cv2.imwrite(str(MAS_DATA_FOLDER / "mas_res_1.jpg"), mas_im_resized)
         #extract average colour values of sub_images of master_image
@@ -252,13 +269,12 @@ class MosaicProject:
         assign = {}
         for index in range(len(assignment_df)):
             assign[index] = assignment_df.iloc[index][1]
-        #retrieve nr_row, nr_col from log
-        log = open(LIBRARY_FOLDER / "log.txt", "r")
-        nr_row, nr_col = map(int, log.readlines()[3: 5])
-        log.close()
-        #retrieve height and width
-        height = self.get_height()
-        width = self.get_width()
+        #retrieve parameter values
+        param = self.get_parameters()
+        height = param.get("height")
+        width = param.get("width")
+        nr_col = param.get("nr_col")
+        nr_row = param.get("nr_row")
         #if tuning is None, average will not involve any filtered master image.
         if tuning is None:
             weights = [100]
@@ -330,8 +346,10 @@ class MosaicProject:
             return None
         #load image with highest existing level of filtering
         mas_res = cv2.imread(str(MAS_DATA_FOLDER / ("mas_res_"+str(level_cur)+".jpg")))
-        height = self.get_height()
-        width = self.get_width()
+        #retrieve parameter values
+        param = self.get_parameters()
+        height = param.get("height")
+        width = param.get("width")
         #define kernel with the shape of a tile
         kernel = np.ones((height, width), np.float32) / (height * width)
         #apply repeating filtering and save results in mas_data folder
@@ -354,7 +372,7 @@ def _clear_library():
     '''Clear library folder.'''
     files = glob.glob("library/*")
     for file in files:
-        if file not in [str(LIBRARY_FOLDER / "library_readme.md"),
+        if file not in [str(LIBRARY_FOLDER / "README.md"),
                         str(MAS_DATA_FOLDER)]:
             os.remove(file)
     return None
@@ -363,7 +381,7 @@ def _clear_mas_data():
     '''Clear mas_data subfolder of library.'''
     files = glob.glob("library/*/*")
     for file in files:
-        if not file == str(MAS_DATA_FOLDER / "mas_data_readme.md"):
+        if not file == str(MAS_DATA_FOLDER / "README.md"):
             os.remove(file)
     return None
 
@@ -410,7 +428,7 @@ def _load_mas_im():
     files = os.listdir(MASTER_FOLDER)
     #remove master folder readme from list
     try:
-        files.remove("master folder readme.md")
+        files.remove("README.md")
     except ValueError:
         pass
     #if no files left, raise FileNotFoundError
@@ -547,6 +565,8 @@ def _optimal_assignment(mas_im_data):
             cost_matrix[mas_index][lib_index] = point_dist(mas_index, lib_index)
     print("Construction of cost matrix completed.")
     print("Finding optimal assignment initalised.")
+    if nr_mas_entries > 700:
+        print("This can take a little while.")
     #apply Hungarian method to obtain optimal assignment
     _, col_ind = linear_sum_assignment(cost_matrix)
     print("Finding optimal assignment completed.")
@@ -581,10 +601,10 @@ def _mosaic_namer(weights):
 
 #IF RUNNING SCRIPT
 if __name__ == "__main__":
-    Mos = MosaicProject()
+    MOS = MosaicProject()
     #build library
-    Mos.build_library()
+    MOS.build_library()
     #process master image
-    Mos.process_master(max_im=0)
+    MOS.process_master(max_im=0)
     #build mosaic
-    Mos.print_mosaic(tuning=None)
+    MOS.print_mosaic(tuning=None)
