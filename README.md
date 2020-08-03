@@ -25,7 +25,7 @@ Suppose there are 1300 images in the "image folder". You might want to build a m
 ```
 mos.build_mosaic(max_im=1000, tuning=None)
 ```
-The default value max_im=0 yields no maximum being imposed.
+The default value max_im=0 equates no maximum being imposed.
 
 ### tuning
 Tuning basically means colour shifting the mosaic towards the master image.
@@ -122,6 +122,7 @@ tuning = 'tuning_2' is equivalent to tuning = [70, 15, 0, 0, 15].
 
 * cv2
 * glob
+* json
 * numpy
 * pandas
 * pathlib
