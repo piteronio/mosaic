@@ -130,7 +130,7 @@ class MosaicProject:
         #check whether a library already exists
         if len(os.listdir(LIBRARY_FOLDER)) > 2:
             print("Would you like to rebuild the library (y/n)?")
-            print("WARNING: this will delete all intermediate files.")
+            print("WARNING: entering y will delete all intermediate files.")
             choice = input("Input: ")
             while choice not in ["y", "n"]:
                 print("Please respond with y or n.")
